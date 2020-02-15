@@ -4,10 +4,11 @@ library(tidyverse)
 library(readxl)
 library(ggpubr)
 library(forecast)
+library(broom)
 
 email <- "maurits.evers@gmail.com"
 version <- "1.0"
-date <- "14 February 2021"
+date <- "14 February 2020"
 gh <- "https://github.com/mevers/shiny_SARIMA_explorer"
 
 ts <- "webmonthlyairportnovember2019-20200204.xls" %>%
@@ -24,8 +25,9 @@ ts <- "webmonthlyairportnovember2019-20200204.xls" %>%
 plot_ts <- function(ts, ylab = "", title = "") {
     autoplot(ts) +
         theme_minimal() + 
-        scale_x_continuous(breaks = seq(2009, 2022)) +
-        xlim(2009, 2022) +
+        scale_x_continuous(
+            breaks = seq(2009, 2022, by = 1),
+            limits = c(2009, 2022)) +
         labs(y = ylab, title = title)
 }
 plot_ACF <- function(ts, subtitle = "") {
@@ -52,12 +54,12 @@ ui <- fluidPage(
    # Application title
    titlePanel(htmlOutput("title_panel")),
    
-   # Sidebar with a slider input for number of bins 
+   # Sidebar with a slider inputs
    sidebarLayout(
       sidebarPanel(
           actionButton("auto", "Auto SARIMA"),
           titlePanel(h3("Non-seasonal components")), 
-         tags$head(
+          tags$head(
              tags$style(type="text/css", 
                         "label.control-label, .selectize-control.single { 
                         display: table-cell; 
@@ -90,10 +92,11 @@ ui <- fluidPage(
          sliderInput("m", "Period", min = 0, max = 24, value = 12)
       ),
       
-      # Show a plot of the generated distribution
+      # Show plots and fit results in tabs
       mainPanel(
-         #titlePanel(htmlOutput("title_panel")),
-         plotOutput("SARIMAplots", height = "640px")
+          tabsetPanel(
+              tabPanel("Plots", plotOutput("SARIMAplots", height = "600px")),
+              tabPanel("Fit results", verbatimTextOutput("fit_results")))          
       )
    ),
    HTML(sprintf("<footer>
@@ -106,42 +109,55 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-   
-   output$title_panel <- renderPrint({
-       HTML(sprintf(
-           "SARIMA explorer: SARIMA(%i,%i,%i)(%i,%i,%i)<sub>%i</sub>",
-           input$p, input$d, input$q, input$P, input$D, input$Q, input$m))
-       
-   })
-    
-   output$SARIMAplots <- renderPlot({
 
-      fit <- arima(
-          ts,
-          order = c(input$p, input$d, input$q),
-          seasonal = list(
-              order = c(input$P, input$D, input$Q),
-              period = input$m))
-      model_string <- sprintf(
-          "SARIMA(%i,%i,%i)(%i,%i,%i)[%i]",
-          input$p, input$d, input$q, input$P, input$D, input$Q, input$m)
-      gg1 <- plot_ts(
-          forecast(ts, model = fit), 
-          ylab = "log(y)", 
-          title = "Log'ed data")
-      gg2 <- plot_ts(
-          fit$residuals, 
-          ylab = "residuals", 
-          title = sprintf("%s residuals", model_string))
-      gg3 <- plot_ACF(
-          fit$residuals, 
-          subtitle = sprintf("%s residuals", model_string))
-      gg4 <- plot_PACF(
-          fit$residuals, 
-          subtitle = sprintf("%s residuals", model_string))
-      ggarrange(gg1, gg2, ggarrange(gg3, gg4, ncol = 2, align = "h"), nrow = 3)
-      
-   })
+    model_fit <- reactive({
+        arima(
+            ts,
+            order = c(input$p, input$d, input$q),
+            seasonal = list(
+                order = c(input$P, input$D, input$Q),
+                period = input$m))
+    })
+       
+    output$title_panel <- renderPrint({
+        HTML(sprintf(
+            "SARIMA explorer: SARIMA(%i,%i,%i)(%i,%i,%i)<sub>%i</sub>",
+            input$p, input$d, input$q, input$P, input$D, input$Q, input$m))
+    })
+    
+    output$SARIMAplots <- renderPlot({
+        fit <- model_fit()
+        model_string <- sprintf(
+            "SARIMA(%i,%i,%i)(%i,%i,%i)[%i]",
+            input$p, input$d, input$q, input$P, input$D, input$Q, input$m)
+        gg1 <- plot_ts(
+            forecast(ts, model = fit), 
+            ylab = "log(y)", 
+            title = "Log'ed data")
+        gg2 <- plot_ts(
+            fit$residuals, 
+            ylab = "residuals", 
+            title = sprintf("%s residuals", model_string))
+        gg3 <- plot_ACF(
+            fit$residuals, 
+            subtitle = sprintf("%s residuals", model_string))
+        gg4 <- plot_PACF(
+            fit$residuals, 
+            subtitle = sprintf("%s residuals", model_string))
+        ggarrange(
+            gg1, gg2, ggarrange(gg3, gg4, ncol = 2, align = "h"), nrow = 3)
+    })
+    
+    output$fit_results <- renderPrint({
+        fit <- model_fit()
+        cat("Fit summary:")
+        print(fit)
+        cat("\n\nCoefficients with 95% CIs:\n")
+        print(tidy(fit, conf.int = TRUE))
+        cat("\n\nFit metrics:\n")
+        print(glance(fit))
+    })
+   
 }
 
 # Run the application 
