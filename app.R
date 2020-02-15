@@ -7,7 +7,7 @@ library(forecast)
 library(broom)
 
 email <- "maurits.evers@gmail.com"
-version <- "1.0"
+version <- "1.1"
 date <- "14 February 2020"
 gh <- "https://github.com/mevers/shiny_SARIMA_explorer"
 
