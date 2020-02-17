@@ -13,7 +13,7 @@ gh <- "https://github.com/mevers/shiny_SARIMA_explorer"
 
 ts <- "webmonthlyairportnovember2019-20200204.xls" %>%
     read_excel(sheet = 1, skip = 6) %>%
-    filter(AIRPORT == "SYDNEY") %>%
+    filter(AIRPORT == "CANBERRA") %>%
     transmute(
         Airport = AIRPORT,
         Year = Year, Month = Month,
@@ -156,6 +156,10 @@ server <- function(input, output) {
         print(tidy(fit, conf.int = TRUE))
         cat("\n\nFit metrics:\n")
         print(glance(fit))
+    })
+    
+    observeEvent(input$auto, {
+        showModal(modalDialog(title = "Warning", "To be implemented!"))
     })
    
 }

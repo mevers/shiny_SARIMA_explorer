@@ -5,6 +5,11 @@
 ![](screenshot.png)
 
 
+## Data
+
+Data are monthly passenger airport traffic data for Canberra airport, freely available from the [Department of Infrastructure, Transport, Cities, and Regional Development](https://www.bitre.gov.au/publications/ongoing/airport_traffic_data).
+
+
 ## TODO
 
 - <s>Add fit summary</s>
